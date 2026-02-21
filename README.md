@@ -43,3 +43,4 @@ Descomenta o modifica los bloques que quieras probar. Requiere **Python 3.10+** 
 - **Procesos:** `multiprocessing.Process`, `multiprocessing.Queue`, `multiprocessing.Pipe`, `multiprocessing.Value`, `multiprocessing.Array`
 - **Alto nivel:** `concurrent.futures.ThreadPoolExecutor`, `concurrent.futures.ProcessPoolExecutor`, `Future`
 - **Async:** `asyncio.run()`, `async def`, `await`, `asyncio.create_task()`, `asyncio.gather()`, `asyncio.Queue`, `asyncio.Lock`, `asyncio.Semaphore`, `asyncio.wait_for()`, `run_in_executor()`
+=======
