@@ -94,9 +94,9 @@ def ejemplo_thread_actual():
     
 
 if __name__ == "__main__":
-    #ejemplo_crear_un_thread()
-    #ejemplo_args_kwargs()
-    #ejemplo_varios_threads()
-    #ejemplo_daemon()
+    ejemplo_crear_un_thread()
+    ejemplo_args_kwargs()
+    ejemplo_varios_threads()
+    ejemplo_daemon()
     ejemplo_thread_actual()
     print("\n--- Fin 04_threading_basico ---")

@@ -11,7 +11,7 @@ Objetos nativos: iter(), next(), yield. Python 3.10+
 def ejemplo_iter_next():
     """iter() obtiene un iterador; next() pide el siguiente valor."""
     print("=== iter() y next() ===")
-    lista = [10, 20, 30]
+    lista = [10, 20, 3]
     it = iter(lista)
     print(next(it))  # 10
     print(next(it))  # 20
@@ -98,9 +98,9 @@ def ejemplo_por_que_importa_para_concurrencia():
 
 
 if __name__ == "__main__":
-    #ejemplo_iter_next()
-    #ejemplo_iterador_manual()
-    #ejemplo_generador_yield()
-    #ejemplo_expresion_generadora()
+    ejemplo_iter_next()
+    ejemplo_iterador_manual()
+    ejemplo_generador_yield()
+    ejemplo_expresion_generadora()
     ejemplo_por_que_importa_para_concurrencia()
     print("\n--- Fin 02_iteradores_generadores ---")

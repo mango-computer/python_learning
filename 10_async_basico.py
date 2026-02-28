@@ -91,9 +91,9 @@ def hello_world():
     print("Hello, World!")
 
 if __name__ == "__main__":
-    #hello_world()
-    #ejemplo_coroutine_simple()
-    #asyncio.run(ejemplo_varias_tareas())
-    #asyncio.run(ejemplo_gather())
+    hello_world()
+    ejemplo_coroutine_simple()
+    asyncio.run(ejemplo_varias_tareas())
+    asyncio.run(ejemplo_gather())
     asyncio.run(tres_tareas_concurrentes())
     print("\n--- Fin 10_async_basico ---")

@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Esquemas CPython — Procesos, Threads, Async</title>
+  <!-- Mermaid: diagramas flow/sequence/class (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      securityLevel: 'loose',
+      flowchart: { useMaxWidth: true, htmlLabels: true },
+      sequence: { useMaxWidth: true }
+    });
+  </script>
+  <style>
+    :root {
+      --bg: #1e1e2e;
+      --surface: #2a2a3e;
+      --text: #e0e0e0;
+      --accent: #89b4fa;
+      --border: #45475a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 1rem 2rem 2rem;
+      line-height: 1.6;
+    }
+    h1 { color: var(--accent); font-size: 1.75rem; }
+    h2 { color: var(--accent); font-size: 1.25rem; margin-top: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem; }
+    .level {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .diagram {
+      background: #111;
+      border-radius: 6px;
+      padding: 1rem;
+      margin: 1rem 0;
+      overflow: auto;
+    }
+    .mermaid { display: flex; justify-content: center; }
+    .mermaid svg { max-width: 100%; }
+    nav {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.5rem;
+    }
+    nav a {
+      color: var(--accent);
+      text-decoration: none;
+      padding: 0.35rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+    nav a:hover { background: var(--surface); }
+    .libs {
+      margin-top: 2rem;
+      padding: 1rem;
+      background: var(--surface);
+      border-radius: 8px;
+      font-size: 0.95rem;
+    }
+    .libs ul { margin: 0.5rem 0 0 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Esquemas: arquitectura CPython en Linux</h1>
+  <p>Procesos → Threads → Event loop → Coroutines. Stack y heap por nivel.</p>
+
+  <nav>
+    <a href="#nivel1">Nivel 1</a>
+    <a href="#nivel2">Nivel 2</a>
+    <a href="#nivel3">Nivel 3</a>
+    <a href="#nivel4">Nivel 4</a>
+    <a href="#nivel5">Nivel 5</a>
+    <a href="#secuencia">Secuencia await</a>
+    <a href="#ejemplo-bloqueo-vs-executor">Bloqueo vs executor</a>
+    <a href="#ejemplo-run-in-executor">run_in_executor</a>
+    <a href="#ejemplo-producer-consumer">Producer-consumer</a>
+    <a href="#libs">Librerías</a>
+  </nav>
+
+  <!-- Nivel 1: script simple -->
+  <div class="level" id="nivel1">
+    <h2>Nivel 1 — Script simple (un proceso, un hilo, sin async)</h2>
+    <p>Un proceso, un hilo. Stack: un frame por llamada. Heap: objetos Python.</p>
+    <div class="diagram">
+      <div class="mermaid">
+flowchart TB
+  subgraph PROC["Proceso Python"]
+    subgraph THREAD["Hilo principal"]
+      CODE["Código secuencial - interpretador CPython"]
+    end
+  end
+  subgraph MEM["Memoria del proceso"]
+    STACK["Stack - frames por llamada"]
+    HEAP["Heap - objetos Python"]
+  end
+  THREAD --> STACK
+  THREAD --> HEAP
+      </div>
+    </div>
+  </div>
+
+  <!-- Nivel 2: asyncio -->
+  <div class="level" id="nivel2">
+    <h2>Nivel 2 — Asyncio (event loop, coroutines, un hilo)</h2>
+    <p>Event loop en el hilo principal. Coroutines y Tasks en heap; el loop las programa y ejecuta cuando hacen <code>await</code>.</p>
+    <div class="diagram">
+      <div class="mermaid">
+flowchart TB
+  subgraph PROC["Proceso Python"]
+    subgraph MAIN["Hilo principal"]
+      subgraph LOOP["Event loop asyncio"]
+        T1["Task 1"]
+        T2["Task 2"]
+        T3["Task 3"]
+      end
+    end
+  end
+  subgraph HEAP["Heap"]
+    CORO["Objetos coroutine - Tasks - Colas del loop"]
+  end
+  subgraph STACK["Stack main"]
+    F["Frames: loop + coroutine en ejecución"]
+  end
+  LOOP --> HEAP
+  MAIN --> STACK
+      </div>
+    </div>
+  </div>
+
+  <!-- Nivel 3: thread pool -->
+  <div class="level" id="nivel3">
+    <h2>Nivel 3 — Thread pool (hilo principal + workers)</h2>
+    <p>Un proceso, varios threads. Pool de workers con su propia cola. Heap compartido; un stack por thread.</p>
+    <div class="diagram">
+      <div class="mermaid">
+flowchart LR
+  subgraph PROC["Proceso Python"]
+    subgraph MAIN["Hilo principal"]
+      APP["Tu código - asyncio.run"]
+    end
+    subgraph POOL["Thread pool"]
+      W1["Worker 1"]
+      W2["Worker 2"]
+      WN["Worker N"]
+    end
+  end
+  subgraph MEM["Memoria"]
+    HEAP["Heap compartido - cola pool, Futures"]
+    S1["Stack main"]
+    S2["Stack workers"]
+  end
+  APP --> HEAP
+  POOL --> HEAP
+  MAIN --> S1
+  POOL --> S2
+      </div>
+    </div>
+  </div>
+
+  <!-- Nivel 4: proceso con threads y async -->
+  <div class="level" id="nivel4">
+    <h2>Nivel 4 — Un proceso: threads + async en el main</h2>
+    <p>Event loop y coroutines solo en el hilo principal. Thread pool ejecuta funciones síncronas; resultados vuelven vía Future.</p>
+    <div class="diagram">
+      <div class="mermaid">
+flowchart TB
+  subgraph PROC["Proceso"]
+    subgraph MAIN["Hilo principal"]
+      subgraph EL["Event loop"]
+        C1["Coroutine 1"]
+        C2["run_in_executor"]
+      end
+    end
+    subgraph WORKERS["Thread pool"]
+      W1["Worker 1"]
+      W2["Worker 2"]
+    end
+  end
+  C2 -->|submit fn| WORKERS
+  WORKERS -->|Future result| EL
+  HEAP["Heap: Futures, cola pool, Tasks"]
+  MAIN --> HEAP
+  WORKERS --> HEAP
+      </div>
+    </div>
+  </div>
+
+  <!-- Nivel 5: varios procesos -->
+  <div class="level" id="nivel5">
+    <h2>Nivel 5 — Varios procesos (cada uno con threads y opcionalmente async)</h2>
+    <p>Cada proceso tiene su propio heap y stacks. Comunicación por Queue/Pipe (serialización).</p>
+    <div class="diagram">
+      <div class="mermaid">
+flowchart LR
+  subgraph P1["Proceso A"]
+    M1["Main thread - event loop opcional"]
+    W1["Workers"]
+    H1["Heap A"]
+  end
+  subgraph P2["Proceso B"]
+    M2["Main thread"]
+    W2["Workers"]
+    H2["Heap B"]
+  end
+  P1 <-->|Queue / Pipe| P2
+      </div>
+    </div>
+  </div>
+
+  <!-- Secuencia: await y loop -->
+  <div class="level" id="secuencia">
+    <h2>Secuencia: await y cambio de coroutine</h2>
+    <div class="diagram">
+      <div class="mermaid">
+sequenceDiagram
+  participant L as Event loop
+  participant C1 as Coroutine 1
+  participant C2 as Coroutine 2
+  L->>C1: ejecuta hasta await
+  C1->>L: await cede
+  Note over L,C1: estado C1 guardado en heap
+  L->>C2: ejecuta hasta await
+  C2->>L: await cede
+  L->>C1: reanuda
+      </div>
+    </div>
+  </div>
+
+  <!-- Demo: bloqueo vs executor (ejemplo_bloqueo_vs_executor) -->
+  <div class="level" id="ejemplo-bloqueo-vs-executor">
+    <h2>Demo: ¿Se bloquea el event loop? (ejemplo_bloqueo_vs_executor)</h2>
+    <p>Se lanzan dos coroutines con <code>gather(indicador_loop(5), tarea_...)</code>. <strong>indicador_loop</strong> imprime <code>[loop] vivo</code> cada 0,5 s. Si el loop está bloqueado, no imprime.</p>
+
+    <h3>Parte 1 — Llamada directa (bloquea)</h3>
+    <p><code>r = trabajo_cpu_corto(10, 2.0)</code> dentro de la coroutine. Función síncrona: no hay <code>await</code>, el hilo se queda ~2 s en <code>time.sleep(2)</code>. El event loop no puede ejecutar <code>indicador_loop</code> → no ves <code>[loop] vivo</code> durante esos 2 s.</p>
+    <div class="diagram">
+      <div class="mermaid">
+flowchart LR
+  subgraph Main["Hilo principal - BLOQUEADO"]
+    T["tarea: trabajo_cpu_corto(10, 2)"]
+  end
+  I["indicador_loop: no corre"]
+  T -.->|"2 s bloqueado"| I
+      </div>
+    </div>
+
+    <h3>Parte 2 — run_in_executor (no bloquea)</h3>
+    <p><code>r = await loop.run_in_executor(None, trabajo_cpu_corto, 10, 2.0)</code>. La coroutine cede; <code>trabajo_cpu_corto</code> corre en un worker del pool. El event loop sigue ejecutando <code>indicador_loop</code> → sigues viendo <code>[loop] vivo</code> cada 0,5 s.</p>
+    <div class="diagram">
+      <div class="mermaid">
+flowchart TB
+  subgraph Main["Hilo principal"]
+    CO["coroutine: await run_in_executor"]
+    IND["indicador_loop: imprime cada 0.5 s"]
+  end
+  subgraph Pool["Thread pool"]
+    W["Worker: trabajo_cpu_corto(10, 2)"]
+  end
+  CO -->|submit| Pool
+  Main --> IND
+      </div>
+    </div>
+
+    <p><strong>Código de referencia (12_async_advanced.py):</strong> <code>indicador_loop</code>, <code>trabajo_cpu_corto</code>, <code>tarea_llamada_directa</code> vs <code>tarea_con_executor</code>. Ejecuta <code>python3 12_async_advanced.py</code> para ver la salida en consola.</p>
+  </div>
+
+  <!-- Ejemplo 12: run_in_executor -->
+  <div class="level" id="ejemplo-run-in-executor">
+    <h2>Ejemplo 12_async_advanced: run_in_executor (get_running_loop + ThreadPool)</h2>
+    <p><code>loop = asyncio.get_running_loop()</code> → <code>await loop.run_in_executor(None, trabajo_cpu, 100)</code>. La coroutine cede; un worker del pool ejecuta <code>trabajo_cpu</code>; el resultado vuelve por Future y el loop reanuda la coroutine.</p>
+    <div class="diagram">
+      <div class="mermaid">
+flowchart TB
+  subgraph Main["Hilo principal"]
+    subgraph EL["Event loop"]
+      CO["coroutine: await run_in_executor(None, trabajo_cpu, 100)"]
+    end
+  end
+  subgraph Pool["ThreadPoolExecutor"]
+    W["Worker: trabajo_cpu(100)"]
+  end
+  CO -->|"1. submit"| Pool
+  Pool -->|"2. Future.set_result"| EL
+  EL -->|"3. reanuda coroutine"| CO
+      </div>
+    </div>
+    <div class="diagram">
+      <div class="mermaid">
+sequenceDiagram
+  participant C as Coroutine
+  participant L as Event loop
+  participant P as Thread pool
+  C->>L: await run_in_executor(None, trabajo_cpu, 100)
+  L->>P: submit trabajo_cpu 100
+  C->>C: (cede, espera Future)
+  P->>P: ejecuta trabajo_cpu
+  P->>L: Future done, resultado 5050
+  L->>C: reanuda con 5050
+      </div>
+    </div>
+  </div>
+
+  <!-- Ejemplo 12: producer-consumer con asyncio.Queue -->
+  <div class="level" id="ejemplo-producer-consumer">
+    <h2>Ejemplo 12_async_advanced: Producer-consumer (asyncio.Queue + gather)</h2>
+    <p><code>cola = asyncio.Queue()</code> → <code>await asyncio.gather(productor(cola, 5), consumidor(cola, 1), consumidor(cola, 2))</code>. Un productor y dos consumidores en el mismo event loop; la cola coordina sin bloquear el hilo.</p>
+    <div class="diagram">
+      <div class="mermaid">
+flowchart LR
+  subgraph Loop["Event loop - un hilo"]
+    P["productor cola 5"]
+    C1["consumidor 1"]
+    C2["consumidor 2"]
+  end
+  Q["asyncio.Queue"]
+  P -->|await put| Q
+  Q -->|await get| C1
+  Q -->|await get| C2
+      </div>
+    </div>
+    <div class="diagram">
+      <div class="mermaid">
+sequenceDiagram
+  participant P as productor
+  participant Q as asyncio.Queue
+  participant C1 as consumidor 1
+  participant C2 as consumidor 2
+  P->>Q: put item 0
+  P->>Q: put item 1
+  C1->>Q: get
+  Q-->>C1: item 0
+  C2->>Q: get
+  Q-->>C2: item 1
+  Note over P,Q: alternan con await put/get
+  P->>Q: put None None x2
+  Q-->>C1: None
+  Q-->>C2: None
+      </div>
+    </div>
+  </div>
+
+  <!-- Librerías -->
+  <div class="libs" id="libs">
+    <h2>Librerías usadas y sugeridas para gráficos</h2>
+    <p><strong>Incluidas en esta página (CDN):</strong></p>
+    <ul>
+      <li><strong>Mermaid</strong> (v10) — Diagramas flowchart, sequence, class, state. <code>https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs</code></li>
+    </ul>
+    <p><strong>Para gráficos más complejos (añadir por script):</strong></p>
+    <ul>
+      <li><strong>D3.js</strong> — Gráficos custom, nodos enlazados, árboles. <code>https://d3js.org/d3.v7.min.js</code> o vía npm.</li>
+      <li><strong>Vis.js</strong> — Grafos interactivos, redes. <code>https://unpkg.com/vis-network/standalone/umd/vis-network.min.js</code></li>
+      <li><strong>Chart.js</strong> — Gráficos 2D (barras, líneas). <code>https://cdn.jsdelivr.net/npm/chart.js</code></li>
+      <li><strong>Mermaid (extras)</strong> — Gantt, pie, journey; ya cubierto por Mermaid.</li>
+    </ul>
+    <p>Para usar D3 o vis, añade un <code>&lt;script src="..."&gt;</code> y dibuja en un <code>&lt;canvas&gt;</code> o <code>&lt;svg&gt;</code> con id; este HTML solo carga Mermaid para mantenerlo autocontenido.</p>
+  </div>
+</body>
+</html>

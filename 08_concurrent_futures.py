@@ -80,10 +80,10 @@ def ejemplo_exception_en_future():
 
 
 if __name__ == "__main__":
-    #ejemplo_thread_pool_submit()
-    #ejemplo_thread_pool_map()
-    #ejemplo_thread_pool_map_in_for()
-    #ejemplo_process_pool()
-    #ejemplo_future_timeout()
+    ejemplo_thread_pool_submit()
+    ejemplo_thread_pool_map()
+    ejemplo_thread_pool_map_in_for()
+    ejemplo_process_pool()
+    ejemplo_future_timeout()
     ejemplo_exception_en_future()
     print("\n--- Fin 08_concurrent_futures ---")

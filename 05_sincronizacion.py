@@ -143,8 +143,8 @@ def ejemplo_semaphore():
 
 
 if __name__ == "__main__":
-    #ejemplo_lock()
-    #ejemplo_event()
-    #ejemplo_condition()
+    ejemplo_lock()
+    ejemplo_event()
+    ejemplo_condition()
     ejemplo_semaphore()
     print("\n--- Fin 05_sincronizacion ---")

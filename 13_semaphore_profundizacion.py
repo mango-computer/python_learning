@@ -11,6 +11,7 @@ threading y asyncio. Solo biblioteca estándar. Python 3.10+
 import asyncio
 import threading
 import time
+from contextlib import contextmanager
 from concurrent.futures import ThreadPoolExecutor
 
 
@@ -63,13 +64,24 @@ def ejemplo_acquire_release_explicito():
 # acquire(timeout=...): no bloquear indefinidamente si el recurso está saturado.
 # ---------------------------------------------------------------------------
 
+
+@contextmanager
+def sem_with_cleanup(sem: threading.Semaphore):
+    sem.acquire()
+    try:
+        yield
+    finally:
+        sem.release()
+        print("Free Resources")
+
+
 def ejemplo_acquire_timeout():
     """acquire(timeout=X) devuelve True si obtuvo el permiso, False si expiró el tiempo."""
     print("\n=== Semaphore: acquire(timeout=...) ===")
     sem = threading.Semaphore(1)  # solo 1 hueco
 
     def tarea_larga(id_: int):
-        with sem:
+        with sem_with_cleanup(sem):
             print(f"  [t{id_}] dentro (2s)")
             time.sleep(2.0)
 
@@ -129,12 +141,12 @@ sem_recurso = threading.Semaphore(3)  # máximo 3 accesos concurrentes
 
 def acceder_recurso(id_thread: int, operacion: str):
     """Simula llamada a API/BD: máximo 3 a la vez."""
-    if not sem_recurso.acquire(timeout=2.0):
+    if not sem_recurso.acquire(timeout=1.0):
         print(f"  [t{id_thread}] rate limit: no pude acceder en 2s")
         return
     try:
         print(f"  [t{id_thread}] accediendo al recurso...")
-        time.sleep(0.3)
+        time.sleep(1.0)
         recurso_simulado.append((id_thread, operacion))
     finally:
         sem_recurso.release()
@@ -143,6 +155,7 @@ def ejemplo_rate_limiting():
     """Múltiples threads compiten por un recurso con límite de 3 concurrentes."""
     print("\n=== Caso real: rate limiting (máx 3 concurrentes) ===")
     recurso_simulado.clear()
+
     threads = [threading.Thread(target=acceder_recurso, args=(i, "read")) for i in range(8)]
     for t in threads:
         t.start()

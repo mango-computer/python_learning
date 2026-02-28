@@ -43,4 +43,11 @@ Descomenta o modifica los bloques que quieras probar. Requiere **Python 3.10+** 
 - **Procesos:** `multiprocessing.Process`, `multiprocessing.Queue`, `multiprocessing.Pipe`, `multiprocessing.Value`, `multiprocessing.Array`
 - **Alto nivel:** `concurrent.futures.ThreadPoolExecutor`, `concurrent.futures.ProcessPoolExecutor`, `Future`
 - **Async:** `asyncio.run()`, `async def`, `await`, `asyncio.create_task()`, `asyncio.gather()`, `asyncio.Queue`, `asyncio.Lock`, `asyncio.Semaphore`, `asyncio.wait_for()`, `run_in_executor()`
-=======
+
+## Mapa de referencia
+
+[GUIA_TECNICA_CONCURRENCIA_PARALELISMO.md](GUIA_TECNICA_CONCURRENCIA_PARALELISMO.md) — Guía técnica con árbol de decisión para elegir modelo y librerías nativas, buenas prácticas y limitaciones conocidas (solo stdlib).
+
+[MAPA_CONCURRENCIA_PARALELISMO.md](MAPA_CONCURRENCIA_PARALELISMO.md) — Clasificación de modelos (threads, procesos, async), librerías por tipo, comunicación segura, sincronización, casos de uso y papel de las coroutines en cada modelo.
+
+[CONSOLIDACION_COROUTINE_TASK_FUTURE.md](CONSOLIDACION_COROUTINE_TASK_FUTURE.md) — Consolidación de Coroutine, Task y Future en el event loop de asyncio, con definiciones y ejemplos mínimos ejecutables.

@@ -16,10 +16,57 @@ from concurrent.futures import ThreadPoolExecutor
 # run_in_executor: ejecutar código bloqueante sin bloquear el event loop.
 # ---------------------------------------------------------------------------
 
+# En lugar de:
+#loop = asyncio.get_running_loop()
+#resultado = await loop.run_in_executor(None, trabajo_cpu, 100)
+
+# Puedes escribir:
+#resultado = await asyncio.to_thread(trabajo_cpu, 100)
+
 def trabajo_cpu(n: int) -> int:
     """Función bloqueante (CPU o I/O síncrono). No usar await dentro."""
-    time.sleep(0.1)  # simula CPU o I/O bloqueante
+    time.sleep(5.0)  # simula CPU o I/O bloqueante (corto para ejemplos rápidos)
     return sum(range(n + 1))
+
+
+def trabajo_cpu_corto(n: int, segundos: float = 2.0) -> int:
+    """Bloqueante varios segundos; para demostrar bloqueo del event loop."""
+    time.sleep(segundos)
+    return sum(range(n + 1))
+
+
+async def indicador_loop(duracion: float = 5.0, intervalo: float = 0.5):
+    """Imprime '[loop] vivo' cada intervalo; demuestra si el event loop puede seguir."""
+    inicio = time.perf_counter()
+    while time.perf_counter() - inicio < duracion:
+        print("  [loop] vivo")
+        await asyncio.sleep(intervalo)
+
+
+async def ejemplo_bloqueo_vs_executor():
+    """Comparación: llamada directa BLOQUEA el loop; run_in_executor NO."""
+    print("\n=== DEMO: ¿Se bloquea el event loop? ===\n")
+
+    # --- Parte 1: llamada DIRECTA (bloqueante) ---
+    async def tarea_llamada_directa():
+        print("  [tarea] Llamando trabajo_cpu_corto(10, 20) DIRECTAMENTE (sin executor)...")
+        r = trabajo_cpu_corto(10, 5.0)  # bloquea el hilo ~20 s
+        print(f"  [tarea] Listo. Resultado: {r}")
+
+    print("--- Con llamada DIRECTA: el indicador [loop] vivo se CONGELA ~2 s ---")
+    await asyncio.gather(indicador_loop(10.0), tarea_llamada_directa())
+
+    # --- Parte 2: run_in_executor (no bloqueante) ---
+    loop = asyncio.get_running_loop()
+    async def tarea_con_executor():
+        print("\n  [tarea] Usando await run_in_executor(trabajo_cpu_corto, 10, 20)...")
+        r = await loop.run_in_executor(None, trabajo_cpu_corto, 10, 5.0)
+        print(f"  [tarea] Listo. Resultado: {r}")
+
+    print("\n--- Con run_in_executor: el indicador [loop] vivo SIGUE imprimiendo ---")
+    await asyncio.gather(indicador_loop(10.0), tarea_con_executor())
+    print("\n  (Si viste '[loop] vivo' cada 0.5 s durante los 2 s, el loop no se bloqueó.)\n")
+
 
 async def ejemplo_run_in_executor():
     """loop.run_in_executor() corre la función en un thread/process pool."""
@@ -33,10 +80,14 @@ async def ejemplo_executor_explicito():
     """Puedes pasar tu propio ThreadPoolExecutor o ProcessPoolExecutor."""
     print("\n=== run_in_executor con executor propio ===")
     loop = asyncio.get_running_loop()
+    inicio = time.perf_counter()
     with ThreadPoolExecutor(max_workers=2) as pool:
-        r1 = await loop.run_in_executor(pool, trabajo_cpu, 50)
-        r2 = await loop.run_in_executor(pool, trabajo_cpu, 100)
-    print(f"  Resultados: {r1}, {r2}")
+        # Así SÍ corren en paralelo (ambas tareas en el pool a la vez)
+        r1_fut = loop.run_in_executor(pool, trabajo_cpu, 50)
+        r2_fut = loop.run_in_executor(pool, trabajo_cpu, 100)
+        r1, r2 = await asyncio.gather(r1_fut, r2_fut)    
+    duracion = time.perf_counter() - inicio
+    print(f"  Resultados: {r1}, {r2} en {duracion:.2f}s")
 
 
 # ---------------------------------------------------------------------------
@@ -135,6 +186,7 @@ async def ejemplo_wait_first_completed():
 
 
 async def main():
+    await ejemplo_bloqueo_vs_executor()
     await ejemplo_run_in_executor()
     await ejemplo_executor_explicito()
     await ejemplo_varios_executor()

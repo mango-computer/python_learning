@@ -48,25 +48,31 @@ async def ejemplo_timeout():
 # ---------------------------------------------------------------------------
 
 contador = 0
+contador_without_lock = 0
 lock = asyncio.Lock()
 
 async def incrementar_con_lock(veces: int, name: str):
-    global contador
+    global contador, contador_without_lock
     for _ in range(veces):
+        contador_without_lock += 1
+        await asyncio.sleep(0)  # cede al loop para que pueda correr la otra coroutine
         async with lock:
             contador += 1
-            print(f"  [lock] {name} incrementó contador a {contador}")
+            #print(f"  [lock] {name} incrementó contador a {contador}")
+            #print(f"  [lock] {name} contador sin lock: {contador_without_lock}")
 
 async def ejemplo_async_lock():
     """Lock evita race condition cuando varias coroutines modifican estado compartido."""
-    global contador
+    global contador, contador_without_lock
     print("\n=== asyncio.Lock ===")
     contador = 0
+    contador_without_lock = 0
     await asyncio.gather(
-        incrementar_con_lock(10_000, "A"),
-        incrementar_con_lock(10_000, "B"),
+        incrementar_con_lock(10_000_000, "A"),
+        incrementar_con_lock(10_000_000, "B"),
     )
     print(f"  Contador esperado 20000, obtenido: {contador}")
+    print(f"  Contador sin lock: {contador_without_lock}")
 
 
 # ---------------------------------------------------------------------------
@@ -76,11 +82,13 @@ async def ejemplo_async_lock():
 async def productor_async(cola: asyncio.Queue, n: int):
     for i in range(n):
         await cola.put(f"item-{i}")
+        await asyncio.sleep(0)  # cede al loop para que pueda correr el consumidor
         print(f"  [productor] put item-{i}")
     await cola.put(None)  # señal de fin
 
 async def consumidor_async(cola: asyncio.Queue):
     while True:
+        await asyncio.sleep(0)  # cede al loop para que pueda correr el productor
         item = await cola.get()
         if item is None:
             break
@@ -92,7 +100,7 @@ async def ejemplo_async_queue():
     print("\n=== asyncio.Queue ===")
     cola = asyncio.Queue()
     await asyncio.gather(
-        productor_async(cola, 3),
+        productor_async(cola, 100),
         consumidor_async(cola),
     )
 
@@ -106,8 +114,12 @@ async def tarea_ok(x: int):
     return x
 
 async def tarea_falla():
-    await asyncio.sleep(0.05)
-    raise ValueError("error en coroutine")
+    try:
+        await asyncio.sleep(0.05)
+        raise ValueError("error en coroutine")
+    except Exception as e:
+        print(f"  Tarea falló: {e}")
+        raise ValueError("error en coroutine")
 
 async def ejemplo_gather_exceptions():
     """gather(..., return_exceptions=True) devuelve resultados o excepciones."""
@@ -139,7 +151,7 @@ async def ejemplo_semaphore():
     """Semaphore(2): como máximo 2 coroutines ejecutando la sección."""
     print("\n=== asyncio.Semaphore ===")
     sem = asyncio.Semaphore(2)
-    await asyncio.gather(*(tarea_con_sem(sem, i) for i in range(4)))
+    await asyncio.gather(*(tarea_con_sem(sem, i) for i in range(10)))
 
 
 async def print_something(something: str, delay: float, times: int):
@@ -157,12 +169,11 @@ async def main():
 
 
 if __name__ == "__main__":
-    
 
-    #asyncio.run(main())
-    #asyncio.run(ejemplo_timeout())
+    asyncio.run(main())
+    asyncio.run(ejemplo_timeout())
     asyncio.run(ejemplo_async_lock())
-    #asyncio.run(ejemplo_async_queue())
-    #asyncio.run(ejemplo_gather_exceptions())
-    #asyncio.run(ejemplo_semaphore())
+    asyncio.run(ejemplo_async_queue())
+    asyncio.run(ejemplo_gather_exceptions())
+    asyncio.run(ejemplo_semaphore())
     print("\n--- Fin 11_async_medium ---")

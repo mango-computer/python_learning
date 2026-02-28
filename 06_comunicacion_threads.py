@@ -126,7 +126,7 @@ def ejemplo_lifo_priority():
 
 if __name__ == "__main__":
     ejemplo_queue_basica()
-    #ejemplo_queue_con_timeout()
-    #ejemplo_queue_task_done_join()
-    #ejemplo_lifo_priority()
+    ejemplo_queue_con_timeout()
+    ejemplo_queue_task_done_join()
+    ejemplo_lifo_priority()
     print("\n--- Fin 06_comunicacion_threads ---")

@@ -153,10 +153,10 @@ def ejemplo_array():
 
 if __name__ == "__main__":
     # En Windows/multiprocessing es necesario proteger el punto de entrada.
-    #ejemplo_process_basico()
-    #ejemplo_varios_procesos()
-    #ejemplo_multiprocessing_queue()
-    #ejemplo_pipe()
-    #ejemplo_value()
+    ejemplo_process_basico()
+    ejemplo_varios_procesos()
+    ejemplo_multiprocessing_queue()
+    ejemplo_pipe()
+    ejemplo_value()
     ejemplo_array()
     print("\n--- Fin 07_multiprocessing ---")

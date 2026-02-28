@@ -104,12 +104,12 @@ def ejemplo_iterable_nativo():
 
 
 if __name__ == "__main__":
-    #ejemplo_for_basico()
-    #ejemplo_range()
+    ejemplo_for_basico()
+    ejemplo_range()
     ejemplo_enumerate()
-    #ejemplo_zip()
-    #ejemplo_while()
-    #ejemplo_break_continue_else()
-    #ejemplo_iterable_nativo()
+    ejemplo_zip()
+    ejemplo_while()
+    ejemplo_break_continue_else()
+    ejemplo_iterable_nativo()
     
     print("\n--- Fin 01_fundamentos_loop ---")

@@ -17,20 +17,27 @@ import time
 # ---------------------------------------------------------------------------
 
 def tarea(ident: int, segundos: float = 0.2) -> int:
+    print(f"Tarea {ident} iniciada")
     time.sleep(segundos)
+    print(f"Tarea {ident} terminada")
     return ident * 10
 
 def ejemplo_future_done_result():
-    """done() indica si terminó; result() bloquea hasta tener el valor."""
+    """
+    done() indica si terminó; running() indica si está en ejecución; result() bloquea hasta tener el valor.
+    running() indica si está en ejecución;
+    cancelled() indica si fue cancelada; exception() devuelve la excepción si la tarea falló.
+    add_done_callback(fn) llama a fn(future) cuando la tarea termina.
+    """
     print("=== concurrent.futures.Future: done() y result() ===")
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
         f = executor.submit(tarea, 1, 0.3)
-        print(f"  Inmediatamente después de submit: done={f.done()}")
+        print(f"  Inmediatamente después de submit: done={f.done()}, running={f.running()}")
         time.sleep(0.35)
-        print(f"  Tras 0.35s: done={f.done()}")
+        print(f"  Tras 0.35s: done={f.done()}, running={f.running()}")
         r = f.result()
         print(f"  result() = {r}")
-        print(f"  Tras result(): done={f.done()}, cancelled={f.cancelled()}")
+        print(f"  Tras result(): done={f.done()}, cancelled={f.cancelled()}, running={f.running()}")
 
 def ejemplo_future_timeout():
     """result(timeout=X) lanza TimeoutError si no termina a tiempo."""
@@ -65,9 +72,12 @@ def ejemplo_as_completed():
     with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
         # Tareas con duraciones distintas para ver orden de llegada
         futures = {
-            executor.submit(tarea, i, 0.1 * (i + 1)): i
+            executor.submit(tarea, i, 2.1 * (i + 1)): i
             for i in range(5)
         }
+
+        # hacer pausa de 1 minuto
+
         for future in concurrent.futures.as_completed(futures):
             ident = futures[future]
             try:
@@ -206,13 +216,18 @@ async def main_async():
     await ejemplo_as_completed_asyncio()
     await ejemplo_future_timeout_asyncio()
 
+import sys
 
 if __name__ == "__main__":
-    ejemplo_future_done_result()
-    ejemplo_future_timeout()
-    ejemplo_future_exception()
-    ejemplo_as_completed()
+    #ejemplo_future_done_result()
+    #ejemplo_future_timeout()
+    #ejemplo_future_exception()
+    #ejemplo_as_completed()
+ 
     ejemplo_wait()
+    sys.exit()
+
+ 
     ejemplo_future_cancel()
     ejemplo_add_done_callback()
     asyncio.run(main_async())
